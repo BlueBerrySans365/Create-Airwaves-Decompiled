@@ -1,0 +1,421 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.core.BlockPos
+ *  net.minecraft.core.HolderLookup$Provider
+ *  net.minecraft.core.NonNullList
+ *  net.minecraft.core.Vec3i
+ *  net.minecraft.core.component.DataComponentType
+ *  net.minecraft.nbt.CompoundTag
+ *  net.minecraft.network.protocol.Packet
+ *  net.minecraft.network.protocol.game.ClientboundStopSoundPacket
+ *  net.minecraft.resources.ResourceLocation
+ *  net.minecraft.server.level.ServerLevel
+ *  net.minecraft.server.level.ServerPlayer
+ *  net.minecraft.sounds.SoundEvent
+ *  net.minecraft.sounds.SoundSource
+ *  net.minecraft.world.ContainerHelper
+ *  net.minecraft.world.SimpleContainer
+ *  net.minecraft.world.inventory.ContainerData
+ *  net.minecraft.world.item.ItemStack
+ *  net.minecraft.world.level.Level
+ *  net.minecraft.world.level.block.state.BlockState
+ *  net.minecraft.world.phys.Vec3
+ */
+package com.airwaves.be;
+
+import com.airwaves.ModRegistry;
+import com.airwaves.be.CableNode;
+import com.airwaves.be.MicrophoneBE;
+import com.airwaves.item.TapeItem;
+import com.airwaves.logic.RadioNetwork;
+import com.airwaves.logic.SoundCapture;
+import com.airwaves.logic.TapeAudio;
+import com.airwaves.logic.TapeData;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.Vec3i;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
+public class TapePlayerBE
+extends MicrophoneBE {
+    public static final int IDLE = 0;
+    public static final int PLAY = 1;
+    public static final int REC = 2;
+    public final SimpleContainer inv = new SimpleContainer(1){
+
+        public void setChanged() {
+            super.setChanged();
+            TapePlayerBE.this.onTapeChanged();
+        }
+
+        public int getMaxStackSize() {
+            return 1;
+        }
+    };
+    public int mode = 0;
+    public int pos;
+    public boolean loop;
+    private boolean lastSignal;
+    private List<TapeData.Cue> recording = new ArrayList<TapeData.Cue>();
+    private int cueIdx;
+    private List<TapeAudio.Frame> voice = new ArrayList<TapeAudio.Frame>();
+    private List<TapeAudio.Frame> playing = List.of();
+    private long recStart;
+    private int voiceIdx;
+    private final Set<ResourceLocation> music = new LinkedHashSet<ResourceLocation>();
+    public final ContainerData data = new ContainerData(){
+
+        public int get(int i) {
+            return switch (i) {
+                case 0 -> TapePlayerBE.this.mode;
+                case 1 -> TapePlayerBE.this.pos;
+                case 2 -> {
+                    if (TapePlayerBE.this.mode == 2) {
+                        yield 6000;
+                    }
+                    yield TapePlayerBE.this.tape().length();
+                }
+                default -> TapePlayerBE.this.loop ? 1 : 0;
+            };
+        }
+
+        public void set(int i, int v) {
+        }
+
+        public int getCount() {
+            return 4;
+        }
+    };
+
+    public TapePlayerBE(BlockPos p, BlockState s) {
+        super(ModRegistry.TAPE_PLAYER_BE.get(), p, s);
+    }
+
+    @Override
+    public Vec3 anchor(int slot) {
+        return CableNode.facing(this, 8.0, 2.0, 15.0);
+    }
+
+    public ItemStack stack() {
+        return this.inv.getItem(0);
+    }
+
+    public TapeData tape() {
+        ItemStack s = this.stack();
+        return s.getItem() instanceof TapeItem ? TapeItem.data(s) : TapeData.EMPTY;
+    }
+
+    public boolean isRecording() {
+        return this.mode == 2;
+    }
+
+    public void button(int id) {
+        switch (id) {
+            case 0: {
+                if (this.mode == 1) {
+                    this.stop();
+                    break;
+                }
+                this.play();
+                break;
+            }
+            case 1: {
+                if (this.mode == 2) {
+                    this.finishRecording();
+                    break;
+                }
+                this.record();
+                break;
+            }
+            case 2: {
+                this.loop = !this.loop;
+                this.setChanged();
+                break;
+            }
+            case 3: {
+                boolean was = this.mode == 1;
+                this.stop();
+                this.pos = 0;
+                if (!was) break;
+                this.play();
+                break;
+            }
+        }
+    }
+
+    public void play() {
+        if (this.level == null || this.level.isClientSide || this.tape().blank()) {
+            return;
+        }
+        if (this.mode == 2) {
+            this.finishRecording();
+        }
+        if (this.pos >= this.tape().length()) {
+            this.pos = 0;
+        }
+        this.mode = 1;
+        this.cueIdx = this.firstCueAt(this.pos);
+        this.playing = this.level.getServer() != null ? TapeAudio.load(this.level.getServer(), this.tape().audio()) : List.of();
+        this.voiceIdx = 0;
+        while (this.voiceIdx < this.playing.size() && this.playing.get(this.voiceIdx).ms() < this.pos * 50) {
+            ++this.voiceIdx;
+        }
+        this.setChanged();
+    }
+
+    public void stop() {
+        if (this.mode == 2) {
+            this.finishRecording();
+            return;
+        }
+        this.mode = 0;
+        this.stopMusic();
+        this.setChanged();
+    }
+
+    public void record() {
+        if (this.level == null || this.level.isClientSide || !(this.stack().getItem() instanceof TapeItem)) {
+            return;
+        }
+        this.stopMusic();
+        this.recording = new ArrayList<TapeData.Cue>();
+        this.voice = new ArrayList<TapeAudio.Frame>();
+        this.recStart = System.currentTimeMillis();
+        this.pos = 0;
+        this.mode = 2;
+        this.setChanged();
+    }
+
+    private void finishRecording() {
+        ItemStack s = this.stack();
+        if (s.getItem() instanceof TapeItem && this.pos > 0) {
+            String audio = "";
+            if (!this.voice.isEmpty() && this.level != null && this.level.getServer() != null) {
+                audio = UUID.randomUUID().toString();
+                TapeAudio.save(this.level.getServer(), audio, this.voice);
+            }
+            s.set((DataComponentType)ModRegistry.TAPE.get(), (Object)TapeData.of(this.pos, this.recording, audio, this.voice.size() / 50));
+        }
+        this.recording = new ArrayList<TapeData.Cue>();
+        this.voice = new ArrayList<TapeAudio.Frame>();
+        this.mode = 0;
+        this.pos = 0;
+        this.setChanged();
+    }
+
+    public void onRedstone(boolean powered) {
+        if (powered && !this.lastSignal && !this.tape().blank()) {
+            this.stop();
+            this.pos = 0;
+            this.play();
+        }
+        this.lastSignal = powered;
+    }
+
+    private void onTapeChanged() {
+        this.setChanged();
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        if (!(this.stack().getItem() instanceof TapeItem)) {
+            if (this.mode == 2) {
+                this.recording = new ArrayList<TapeData.Cue>();
+                this.voice = new ArrayList<TapeAudio.Frame>();
+                this.mode = 0;
+            } else if (this.mode == 1) {
+                this.stop();
+            }
+            this.pos = 0;
+        }
+    }
+
+    public void capture(ResourceLocation id, float vol, float pitch, byte kind) {
+        if (this.mode != 2 || this.recording.size() >= 4000) {
+            return;
+        }
+        this.recording.add(new TapeData.Cue(this.pos, id, vol, pitch, kind));
+    }
+
+    public void captureVoice(byte[] frame) {
+        if (this.mode != 2 || this.voice.size() >= 15000) {
+            return;
+        }
+        int ms = (int)Math.min(System.currentTimeMillis() - this.recStart, (long)this.pos * 50L + 49L);
+        if (!this.voice.isEmpty()) {
+            ms = Math.max(ms, this.voice.get(this.voice.size() - 1).ms());
+        }
+        this.voice.add(new TapeAudio.Frame(ms, (byte[])frame.clone()));
+    }
+
+    public UUID voiceId() {
+        return UUID.nameUUIDFromBytes(("airwaves_tape:" + this.worldPosition.asLong()).getBytes());
+    }
+
+    public void serverTick() {
+        Level level = this.level;
+        if (!(level instanceof ServerLevel)) {
+            return;
+        }
+        ServerLevel sl = (ServerLevel)level;
+        if (this.mode == 2) {
+            if (++this.pos >= 6000) {
+                this.finishRecording();
+            }
+            return;
+        }
+        if (this.mode != 1) {
+            return;
+        }
+        TapeData t = this.tape();
+        if (t.blank()) {
+            this.stop();
+            return;
+        }
+        List<TapeData.Cue> cues = t.cues();
+        while (this.cueIdx < cues.size() && cues.get(this.cueIdx).tick() <= this.pos) {
+            this.emit(sl, cues.get(this.cueIdx++));
+        }
+        int until = (this.pos + 1) * 50;
+        while (this.voiceIdx < this.playing.size() && this.playing.get(this.voiceIdx).ms() < until) {
+            this.speak(sl, this.playing.get(this.voiceIdx++).data());
+        }
+        if (++this.pos >= t.length()) {
+            this.stopMusic();
+            if (this.loop) {
+                this.pos = 0;
+                this.cueIdx = 0;
+                this.voiceIdx = 0;
+            } else {
+                this.mode = 0;
+                this.pos = 0;
+            }
+            this.setChanged();
+        }
+    }
+
+    private int firstCueAt(int tick) {
+        int i;
+        List<TapeData.Cue> cues = this.tape().cues();
+        for (i = 0; i < cues.size() && cues.get(i).tick() < tick; ++i) {
+        }
+        return i;
+    }
+
+    private boolean wired() {
+        return this.feeds != null && this.feeds.active && !this.feeds.isRemoved();
+    }
+
+    /*
+     * WARNING - Removed try catching itself - possible behaviour change.
+     */
+    private void emit(ServerLevel sl, TapeData.Cue c) {
+        float vol;
+        boolean on = this.wired();
+        if (c.kind() == 2) {
+            this.stopOne(sl, c.sound(), on);
+            return;
+        }
+        float f = vol = c.kind() == 1 ? 2.5f : c.volume();
+        if (c.kind() == 1) {
+            this.music.add(c.sound());
+        }
+        SoundCapture.suppress = on;
+        try {
+            sl.playSound(null, (double)this.worldPosition.getX() + 0.5, (double)this.worldPosition.getY() + 0.5, (double)this.worldPosition.getZ() + 0.5, SoundEvent.createVariableRangeEvent((ResourceLocation)c.sound()), SoundSource.RECORDS, vol, c.pitch());
+        }
+        finally {
+            SoundCapture.suppress = false;
+        }
+        if (on) {
+            this.feeds.onAir(sl);
+            RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), c.sound(), c.volume() * this.line, c.pitch(), c.kind(), this.worldPosition.asLong());
+        }
+    }
+
+    private void speak(ServerLevel sl, byte[] frame) {
+        UUID id = this.voiceId();
+        RadioNetwork.send(sl, this.worldPosition, id, frame, 1.0f, true, 1.0f);
+        if (this.wired()) {
+            this.feeds.onAir(sl);
+            RadioNetwork.broadcast(sl, this.feeds.getBlockPos().asLong(), id, frame, this.line);
+        } else {
+            RadioNetwork.voiceFromPoint(sl, this.worldPosition.getCenter(), id, frame);
+        }
+    }
+
+    private void stopOne(ServerLevel sl, ResourceLocation id, boolean on) {
+        this.music.remove(id);
+        ClientboundStopSoundPacket stopPkt = new ClientboundStopSoundPacket(id, SoundSource.RECORDS);
+        for (ServerPlayer p : sl.players()) {
+            if (!(p.blockPosition().distSqr((Vec3i)this.worldPosition) < 9216.0)) continue;
+            p.connection.send((Packet)stopPkt);
+        }
+        if (on) {
+            RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), id, 1.0f, 1.0f, (byte)2, this.worldPosition.asLong());
+        }
+    }
+
+    private void stopMusic() {
+        ServerLevel sl;
+        block4: {
+            block3: {
+                Level level = this.level;
+                if (!(level instanceof ServerLevel)) break block3;
+                sl = (ServerLevel)level;
+                if (!this.music.isEmpty()) break block4;
+            }
+            this.music.clear();
+            return;
+        }
+        boolean on = this.wired();
+        for (ResourceLocation id : new ArrayList<ResourceLocation>(this.music)) {
+            this.stopOne(sl, id, on);
+        }
+    }
+
+    @Override
+    public void setRemoved() {
+        this.stopMusic();
+        super.setRemoved();
+    }
+
+    @Override
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider r) {
+        super.saveAdditional(tag, r);
+        ContainerHelper.saveAllItems((CompoundTag)tag, (NonNullList)this.inv.getItems(), (HolderLookup.Provider)r);
+        tag.putBoolean("loop", this.loop);
+        tag.putBoolean("signal", this.lastSignal);
+    }
+
+    @Override
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider r) {
+        super.loadAdditional(tag, r);
+        this.inv.getItems().set(0, (Object)ItemStack.EMPTY);
+        ContainerHelper.loadAllItems((CompoundTag)tag, (NonNullList)this.inv.getItems(), (HolderLookup.Provider)r);
+        this.loop = tag.getBoolean("loop");
+        this.lastSignal = tag.getBoolean("signal");
+    }
+}

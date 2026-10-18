@@ -1,0 +1,16 @@
+Summary for airwaves-1.21.1-0.1.0.jar
+Decompiled with CFR 0.152
+
+
+com.airwaves.compat.powergrid.PGMachine
+----------------------------
+
+terminal(net.minecraft.world.level.block.state.BlockState int )
+  Exception : java.lang.UnsupportedOperationException
+
+
+com.airwaves.item.MastItem
+----------------------------
+
+place(net.minecraft.world.item.context.BlockPlaceContext )
+  Unable to fully structure code
