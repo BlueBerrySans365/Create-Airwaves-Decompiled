@@ -39,7 +39,7 @@ public static enum BoardDesign.Part {
             case 1 -> (Item)ModRegistry.CAPACITOR.get();
             case 2 -> (Item)ModRegistry.LED.get();
             case 3 -> (Item)ModRegistry.TRANSISTOR.get();
-            case 4 -> (Item)ModRegistry.VACUUM_TUBE.get();
+            case 4 -> ModRegistry.electronTube();
             case 5 -> (Item)ModRegistry.COPPER_COIL.get();
             case 6 -> (Item)ModRegistry.CRYSTAL_OSCILLATOR.get();
             case 7 -> (Item)ModRegistry.MEMORY_CHIP.get();

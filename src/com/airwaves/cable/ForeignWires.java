@@ -55,12 +55,6 @@ public final class ForeignWires {
         if (p.contains("strand") || p.contains("empty") || p.contains("duplex") || p.contains("string_light")) {
             return null;
         }
-        if (p.contains("gold") || p.contains("electrum")) {
-            return CableType.GOLD;
-        }
-        if (p.contains("insulated")) {
-            return CableType.SILVER;
-        }
         return CableType.COPPER;
     }
 

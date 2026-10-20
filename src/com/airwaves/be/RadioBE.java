@@ -39,7 +39,7 @@ implements AudioSink {
     @Override
     public void setRemoved() {
         super.setRemoved();
-        ClientSinks.SINKS.remove(this);
+        ClientSinks.removed(this, this);
     }
 
     @Override

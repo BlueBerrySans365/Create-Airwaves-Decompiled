@@ -33,8 +33,10 @@ import com.airwaves.Config;
 import com.airwaves.ModRegistry;
 import com.airwaves.ModSounds;
 import com.airwaves.be.TransmitterBE;
+import com.airwaves.block.TransmitterBlock;
 import com.airwaves.cable.ForeignWires;
 import com.airwaves.client.ClientInit;
+import com.airwaves.compat.create.RadioMovement;
 import com.airwaves.compat.svc.SvcState;
 import com.airwaves.logic.RadioNetwork;
 import com.airwaves.logic.SoundCapture;
@@ -98,9 +100,10 @@ public class Airwaves {
 
     private static void commonSetup(FMLCommonSetupEvent e) {
         e.enqueueWork(() -> {
+            RadioMovement.register();
             SimpleRegistry impacts = BlockStressValues.IMPACTS;
             for (int i = 0; i < ModRegistry.TRANSMITTERS.size(); ++i) {
-                double v = TransmitterBE.STRESS[i];
+                double v = TransmitterBE.STRESS[((TransmitterBlock)((Object)((Object)ModRegistry.TRANSMITTERS.get((int)i).get()))).tier.level - 1];
                 impacts.register((Object)((Block)ModRegistry.TRANSMITTERS.get(i).get()), () -> v);
             }
             impacts.register((Object)((Block)ModRegistry.JAMMER.get()), () -> 8.0);

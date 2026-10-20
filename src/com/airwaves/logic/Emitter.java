@@ -3,16 +3,14 @@
  * 
  * Could not load the following classes:
  *  net.minecraft.core.BlockPos
- *  net.minecraft.core.Direction
  */
 package com.airwaves.logic;
 
 import com.airwaves.Tuning;
 import com.airwaves.logic.AntennaUtil;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 
-public record Emitter(long root, BlockPos pos, double topY, Tuning tuning, double range, float baseQ, String name, Direction beam) {
+public record Emitter(long root, BlockPos pos, double topY, Tuning tuning, double range, float baseQ, String name, Float beam) {
     public static final double CREATIVE = 1.0E8;
 
     public Emitter(long root, BlockPos pos, double topY, Tuning tuning, double range, float baseQ, String name) {

@@ -5,6 +5,7 @@
  *  com.mojang.serialization.Codec
  *  net.minecraft.core.BlockPos
  *  net.minecraft.core.component.DataComponentType
+ *  net.minecraft.core.registries.BuiltInRegistries
  *  net.minecraft.core.registries.Registries
  *  net.minecraft.network.chat.Component
  *  net.minecraft.network.codec.ByteBufCodecs
@@ -59,19 +60,19 @@ import com.airwaves.be.RelayBE;
 import com.airwaves.be.SpeakerBE;
 import com.airwaves.be.TapePlayerBE;
 import com.airwaves.be.TransmitterBE;
+import com.airwaves.be.YagiAntennaBE;
 import com.airwaves.block.AntennaBlock;
 import com.airwaves.block.CircuitBoxBlock;
 import com.airwaves.block.CircuitWorkbenchBlock;
+import com.airwaves.block.ConnectedBlock;
 import com.airwaves.block.CreativeAntennaBlock;
 import com.airwaves.block.CreativeReceiverBlock;
 import com.airwaves.block.CreativeTransmitterBlock;
 import com.airwaves.block.DimensionalRelayBlock;
-import com.airwaves.block.HornSpeakerBlock;
 import com.airwaves.block.InsulatorBlock;
 import com.airwaves.block.JammerBlock;
 import com.airwaves.block.MastBlock;
 import com.airwaves.block.MicrophoneBlock;
-import com.airwaves.block.OnAirSignBlock;
 import com.airwaves.block.RadioBlock;
 import com.airwaves.block.RadioConsoleBlock;
 import com.airwaves.block.ReceiverBlock;
@@ -88,7 +89,6 @@ import com.airwaves.item.CableItem;
 import com.airwaves.item.FieldManualItem;
 import com.airwaves.item.FrequencyCardItem;
 import com.airwaves.item.MastItem;
-import com.airwaves.item.MultimeterItem;
 import com.airwaves.item.PortableRadioItem;
 import com.airwaves.item.TapeItem;
 import com.airwaves.item.TunableBlockItem;
@@ -110,6 +110,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -159,9 +160,6 @@ public final class ModRegistry {
     public static final List<DeferredBlock<TransmitterBlock>> TRANSMITTERS = new ArrayList<DeferredBlock<TransmitterBlock>>();
     public static final List<DeferredBlock<ReceiverBlock>> RECEIVERS = new ArrayList<DeferredBlock<ReceiverBlock>>();
     public static final DeferredBlock<AntennaBlock.Small> ANTENNA;
-    public static final DeferredBlock<AntennaBlock.Medium> ANTENNA_MEDIUM;
-    public static final DeferredBlock<AntennaBlock.Big> ANTENNA_BIG;
-    public static final DeferredBlock<AntennaBlock.Giant> ANTENNA_GIANT;
     public static final DeferredBlock<MicrophoneBlock> MICROPHONE;
     public static final DeferredBlock<SpeakerBlock> SPEAKER;
     public static final DeferredBlock<TapePlayerBlock> TAPE_PLAYER;
@@ -172,8 +170,6 @@ public final class ModRegistry {
     public static final DeferredBlock<CreativeTransmitterBlock> CREATIVE_TRANSMITTER;
     public static final DeferredBlock<CreativeReceiverBlock> CREATIVE_RECEIVER;
     public static final DeferredBlock<CreativeAntennaBlock> CREATIVE_ANTENNA;
-    public static final DeferredBlock<OnAirSignBlock> ON_AIR_SIGN;
-    public static final DeferredBlock<HornSpeakerBlock> HORN_SPEAKER;
     public static final DeferredBlock<RadioConsoleBlock> RADIO_CONSOLE;
     public static final DeferredBlock<CircuitWorkbenchBlock> CIRCUIT_WORKBENCH;
     public static final DeferredBlock<YagiAntennaBlock> YAGI_ANTENNA;
@@ -186,26 +182,19 @@ public final class ModRegistry {
     public static final DeferredBlock<StructureBlock> RADIO_TOWER;
     public static final DeferredItem<CableItem> COPPER_WIRE;
     public static final DeferredItem<FrequencyCardItem> FREQUENCY_CARD;
-    public static final DeferredItem<MultimeterItem> MULTIMETER;
     public static final DeferredItem<Item> SILVER_INGOT;
     public static final DeferredItem<Item> SILVER_NUGGET;
     public static final DeferredItem<Item> RAW_SILVER;
     public static final DeferredItem<Item> SILVER_SHEET;
-    public static final DeferredItem<CableItem> GOLD_WIRE;
-    public static final DeferredItem<CableItem> SILVER_WIRE;
-    public static final DeferredItem<CableItem> FIBER_CABLE;
-    public static final DeferredItem<Item> POLISHED_AMETHYST;
     public static final DeferredItem<Item> SIGNAL_MECHANISM;
     public static final DeferredItem<Item> INCOMPLETE_CIRCUIT_BOARD;
     public static final DeferredItem<Item> INCOMPLETE_SIGNAL_MECHANISM;
     public static final DeferredItem<FieldManualItem> FIELD_MANUAL;
     public static final DeferredItem<Item> COPPER_COIL;
-    public static final DeferredItem<Item> VACUUM_TUBE;
     public static final DeferredItem<Item> CRYSTAL_OSCILLATOR;
     public static final DeferredItem<Item> CIRCUIT_BOARD;
     public static final DeferredItem<Item> SPEAKER_CONE;
     public static final DeferredItem<Item> MIC_CAPSULE;
-    public static final DeferredItem<Item> METAL_CASING;
     public static final DeferredItem<Item> MEMORY_CHIP;
     public static final DeferredItem<Item> COUNTER_CHIP;
     public static final DeferredItem<Item> PULSE_CHIP;
@@ -222,16 +211,11 @@ public final class ModRegistry {
     public static final DeferredItem<TunableBlockItem> CREATIVE_TRANSMITTER_ITEM;
     public static final DeferredItem<TunableBlockItem> CREATIVE_RECEIVER_ITEM;
     public static final DeferredItem<BlockItem> CREATIVE_ANTENNA_ITEM;
-    public static final DeferredItem<BlockItem> ON_AIR_SIGN_ITEM;
-    public static final DeferredItem<BlockItem> HORN_SPEAKER_ITEM;
     public static final DeferredItem<TunableBlockItem> RADIO_CONSOLE_ITEM;
     public static final DeferredItem<BlockItem> TUNING_TABLE_ITEM;
     public static final List<DeferredItem<TunableBlockItem>> TRANSMITTER_ITEMS;
     public static final List<DeferredItem<TunableBlockItem>> RECEIVER_ITEMS;
     public static final DeferredItem<MastItem> ANTENNA_ITEM;
-    public static final DeferredItem<MastItem> ANTENNA_MEDIUM_ITEM;
-    public static final DeferredItem<MastItem> ANTENNA_BIG_ITEM;
-    public static final DeferredItem<MastItem> ANTENNA_GIANT_ITEM;
     public static final DeferredItem<BlockItem> YAGI_ANTENNA_ITEM;
     public static final DeferredItem<BlockItem> SILVER_ORE_ITEM;
     public static final DeferredItem<BlockItem> DEEPSLATE_SILVER_ORE_ITEM;
@@ -262,6 +246,7 @@ public final class ModRegistry {
     public static final Supplier<BlockEntityType<MicrophoneBE>> MIC_BE;
     public static final Supplier<BlockEntityType<TapePlayerBE>> TAPE_PLAYER_BE;
     public static final Supplier<BlockEntityType<SpeakerBE>> SPEAKER_BE;
+    public static final Supplier<BlockEntityType<YagiAntennaBE>> YAGI_BE;
     public static final Supplier<BlockEntityType<InsulatorBE>> INSULATOR_BE;
     public static final Supplier<BlockEntityType<JammerBE>> JAMMER_BE;
     public static final Supplier<BlockEntityType<CircuitWorkbenchBE>> WORKBENCH_BE;
@@ -296,6 +281,10 @@ public final class ModRegistry {
         return ITEMS.register(n, () -> new Item(new Item.Properties()));
     }
 
+    public static Item electronTube() {
+        return (Item)BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath((String)"create", (String)"electron_tube"));
+    }
+
     public static Item board(BoardDesign d) {
         return (Item)BOARDS.get((Object)d).get();
     }
@@ -324,19 +313,10 @@ public final class ModRegistry {
     private ModRegistry() {
     }
 
-    private static /* synthetic */ Item lambda$static$55(BoardDesign d) {
-        return new BoardItem(d, new Item.Properties());
-    }
-
     static {
-        for (Tier tier : Tier.values()) {
-            TRANSMITTERS.add((DeferredBlock<TransmitterBlock>)BLOCKS.register("transmitter_" + tier.id, () -> ElectricCompat.transmitter(t, ModRegistry.metal().strength(2.0f + (float)t.level))));
-            RECEIVERS.add((DeferredBlock<ReceiverBlock>)BLOCKS.register("receiver_" + tier.id, () -> new ReceiverBlock(t, ModRegistry.metal().strength(1.5f + (float)t.level))));
-        }
+        TRANSMITTERS.add((DeferredBlock<TransmitterBlock>)BLOCKS.register("transmitter", () -> ElectricCompat.transmitter(Tier.GIANT, ModRegistry.metal().strength(6.0f))));
+        RECEIVERS.add((DeferredBlock<ReceiverBlock>)BLOCKS.register("receiver", () -> new ReceiverBlock(Tier.GIANT, ModRegistry.metal().strength(5.5f))));
         ANTENNA = BLOCKS.register("antenna", () -> new AntennaBlock.Small(ModRegistry.mast(1.5f)));
-        ANTENNA_MEDIUM = BLOCKS.register("antenna_medium", () -> new AntennaBlock.Medium(ModRegistry.mast(2.0f)));
-        ANTENNA_BIG = BLOCKS.register("antenna_big", () -> new AntennaBlock.Big(ModRegistry.mast(3.0f)));
-        ANTENNA_GIANT = BLOCKS.register("antenna_giant", () -> new AntennaBlock.Giant(ModRegistry.mast(4.0f)));
         MICROPHONE = BLOCKS.register("microphone", () -> new MicrophoneBlock(ModRegistry.metal().strength(1.0f)));
         SPEAKER = BLOCKS.register("speaker", () -> new SpeakerBlock(ModRegistry.wood().strength(1.5f)));
         TAPE_PLAYER = BLOCKS.register("tape_player", () -> new TapePlayerBlock(ModRegistry.metal().strength(1.5f)));
@@ -347,40 +327,31 @@ public final class ModRegistry {
         CREATIVE_TRANSMITTER = BLOCKS.register("creative_transmitter", () -> new CreativeTransmitterBlock(ModRegistry.metal().strength(-1.0f, 3600000.0f).noLootTable()));
         CREATIVE_RECEIVER = BLOCKS.register("creative_receiver", () -> new CreativeReceiverBlock(ModRegistry.metal().strength(-1.0f, 3600000.0f).noLootTable()));
         CREATIVE_ANTENNA = BLOCKS.register("creative_antenna", () -> new CreativeAntennaBlock(ModRegistry.mast(1.0f).strength(-1.0f, 3600000.0f).noLootTable()));
-        ON_AIR_SIGN = BLOCKS.register("on_air_sign", () -> new OnAirSignBlock(ModRegistry.metal().strength(1.0f).lightLevel(st -> (Boolean)st.getValue((Property)OnAirSignBlock.LIT) != false ? 10 : 0)));
-        HORN_SPEAKER = BLOCKS.register("horn_speaker", () -> new HornSpeakerBlock(ModRegistry.metal().strength(1.5f)));
         RADIO_CONSOLE = BLOCKS.register("radio_console", () -> new RadioConsoleBlock(ModRegistry.metal().strength(2.0f)));
         CIRCUIT_WORKBENCH = BLOCKS.register("circuit_workbench", () -> new CircuitWorkbenchBlock(ModRegistry.wood().strength(2.5f)));
         YAGI_ANTENNA = BLOCKS.register("yagi_antenna", () -> new YagiAntennaBlock(ModRegistry.mast(1.5f)));
         SILVER_ORE = BLOCKS.register("silver_ore", () -> new DropExperienceBlock((IntProvider)ConstantInt.of((int)0), ModRegistry.ore(false)));
         DEEPSLATE_SILVER_ORE = BLOCKS.register("deepslate_silver_ore", () -> new DropExperienceBlock((IntProvider)ConstantInt.of((int)0), ModRegistry.ore(true)));
-        SILVER_BLOCK = BLOCKS.register("silver_block", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(5.0f, 6.0f).sound(SoundType.METAL).requiresCorrectToolForDrops()));
+        SILVER_BLOCK = BLOCKS.register("silver_block", () -> new ConnectedBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(5.0f, 6.0f).sound(SoundType.METAL).requiresCorrectToolForDrops()));
         RADIO_CASING = BLOCKS.register("radio_casing", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0f, 6.0f).sound(SoundType.COPPER)));
         RELAY_TOWER_SMALL = BLOCKS.register("relay_tower_small", () -> StructureBlock.createKinetic("relay_tower_small", ModRegistry.structure(ModRegistry.mast(4.0f)), RelayBE::new, new Property[0]));
         RELAY_TOWER_BIG = BLOCKS.register("relay_tower_big", () -> StructureBlock.createKinetic("relay_tower_big", ModRegistry.structure(ModRegistry.mast(5.0f)), RelayBE::new, new Property[0]));
         RADIO_TOWER = BLOCKS.register("radio_tower", () -> StructureBlock.createKinetic("radio_tower", ModRegistry.structure(ModRegistry.mast(6.0f)).lightLevel(st -> st.hasProperty((Property)TowerCoreBE.ACTIVE) && (Boolean)st.getValue((Property)TowerCoreBE.ACTIVE) != false ? 7 : 0), TowerCoreBE::new, new Property[]{TowerCoreBE.CRYSTAL, TowerCoreBE.ACTIVE}));
         COPPER_WIRE = ITEMS.register("copper_wire", () -> new CableItem(CableType.COPPER, new Item.Properties()));
         FREQUENCY_CARD = ITEMS.register("frequency_card", () -> new FrequencyCardItem(new Item.Properties().stacksTo(16)));
-        MULTIMETER = ITEMS.register("multimeter", () -> new MultimeterItem(new Item.Properties().stacksTo(1)));
         SILVER_INGOT = ModRegistry.part("silver_ingot");
         SILVER_NUGGET = ModRegistry.part("silver_nugget");
         RAW_SILVER = ModRegistry.part("raw_silver");
         SILVER_SHEET = ModRegistry.part("silver_sheet");
-        GOLD_WIRE = ITEMS.register("gold_wire", () -> new CableItem(CableType.GOLD, new Item.Properties()));
-        SILVER_WIRE = ITEMS.register("silver_wire", () -> new CableItem(CableType.SILVER, new Item.Properties()));
-        FIBER_CABLE = ITEMS.register("fiber_cable", () -> new CableItem(CableType.FIBER, new Item.Properties()));
-        POLISHED_AMETHYST = ModRegistry.part("polished_amethyst");
         SIGNAL_MECHANISM = ModRegistry.part("signal_mechanism");
         INCOMPLETE_CIRCUIT_BOARD = ModRegistry.part("incomplete_circuit_board");
         INCOMPLETE_SIGNAL_MECHANISM = ModRegistry.part("incomplete_signal_mechanism");
         FIELD_MANUAL = ITEMS.register("field_manual", () -> new FieldManualItem(new Item.Properties().stacksTo(1)));
         COPPER_COIL = ModRegistry.part("copper_coil");
-        VACUUM_TUBE = ModRegistry.part("vacuum_tube");
         CRYSTAL_OSCILLATOR = ModRegistry.part("crystal_oscillator");
         CIRCUIT_BOARD = ModRegistry.part("circuit_board");
         SPEAKER_CONE = ModRegistry.part("speaker_cone");
         MIC_CAPSULE = ModRegistry.part("mic_capsule");
-        METAL_CASING = ModRegistry.part("metal_casing");
         MEMORY_CHIP = ModRegistry.part("memory_chip");
         COUNTER_CHIP = ModRegistry.part("counter_chip");
         PULSE_CHIP = ModRegistry.part("pulse_chip");
@@ -392,39 +363,30 @@ public final class ModRegistry {
         LED = ModRegistry.part("led");
         TRANSISTOR = ModRegistry.part("transistor");
         BOARDS = new EnumMap<BoardDesign, DeferredItem<Item>>(BoardDesign.class);
-        for (Enum enum_ : BoardDesign.values()) {
-            BOARDS.put((BoardDesign)enum_, (DeferredItem<Item>)ITEMS.register(((BoardDesign)enum_).id, () -> ModRegistry.lambda$static$55((BoardDesign)enum_)));
+        for (BoardDesign d : BoardDesign.values()) {
+            BOARDS.put(d, (DeferredItem<Item>)ITEMS.register(d.id, () -> new BoardItem(d, new Item.Properties())));
         }
         RADIO_ITEM = ITEMS.register("radio", () -> new TunableBlockItem((Block)RADIO.get(), new Item.Properties().stacksTo(1)));
         PORTABLE_RADIO = ITEMS.register("portable_radio", () -> new PortableRadioItem(new Item.Properties().stacksTo(1)));
         CREATIVE_TRANSMITTER_ITEM = ITEMS.register("creative_transmitter", () -> new TunableBlockItem((Block)CREATIVE_TRANSMITTER.get(), new Item.Properties().rarity(Rarity.EPIC)));
         CREATIVE_RECEIVER_ITEM = ITEMS.register("creative_receiver", () -> new TunableBlockItem((Block)CREATIVE_RECEIVER.get(), new Item.Properties().rarity(Rarity.EPIC)));
         CREATIVE_ANTENNA_ITEM = ITEMS.register("creative_antenna", () -> new BlockItem((Block)CREATIVE_ANTENNA.get(), new Item.Properties().rarity(Rarity.EPIC)));
-        ON_AIR_SIGN_ITEM = ITEMS.register("on_air_sign", () -> new BlockItem((Block)ON_AIR_SIGN.get(), new Item.Properties()));
-        HORN_SPEAKER_ITEM = ITEMS.register("horn_speaker", () -> new BlockItem((Block)HORN_SPEAKER.get(), new Item.Properties()));
         RADIO_CONSOLE_ITEM = ITEMS.register("radio_console", () -> new TunableBlockItem((Block)RADIO_CONSOLE.get(), new Item.Properties().stacksTo(1)));
         TUNING_TABLE_ITEM = ITEMS.register("tuning_table", () -> new BlockItem((Block)TUNING_TABLE.get(), new Item.Properties()));
         TRANSMITTER_ITEMS = new ArrayList<DeferredItem<TunableBlockItem>>();
         RECEIVER_ITEMS = new ArrayList<DeferredItem<TunableBlockItem>>();
-        int i = 0;
-        while (i < 4) {
-            int k = i++;
-            TRANSMITTER_ITEMS.add((DeferredItem<TunableBlockItem>)ITEMS.register("transmitter_" + Tier.values()[k].id, () -> new TunableBlockItem((Block)TRANSMITTERS.get(k).get(), new Item.Properties())));
-            RECEIVER_ITEMS.add((DeferredItem<TunableBlockItem>)ITEMS.register("receiver_" + Tier.values()[k].id, () -> new TunableBlockItem((Block)RECEIVERS.get(k).get(), new Item.Properties())));
-        }
-        ANTENNA_ITEM = ITEMS.register("antenna", () -> new MastItem((MastBlock)((Object)((Object)((Object)ANTENNA.get()))), new Item.Properties()));
-        ANTENNA_MEDIUM_ITEM = ITEMS.register("antenna_medium", () -> new MastItem((MastBlock)((Object)((Object)((Object)ANTENNA_MEDIUM.get()))), new Item.Properties()));
-        ANTENNA_BIG_ITEM = ITEMS.register("antenna_big", () -> new MastItem((MastBlock)((Object)((Object)((Object)ANTENNA_BIG.get()))), new Item.Properties()));
-        ANTENNA_GIANT_ITEM = ITEMS.register("antenna_giant", () -> new MastItem((MastBlock)((Object)((Object)((Object)ANTENNA_GIANT.get()))), new Item.Properties()));
+        TRANSMITTER_ITEMS.add((DeferredItem<TunableBlockItem>)ITEMS.register("transmitter", () -> new TunableBlockItem((Block)TRANSMITTERS.get(0).get(), new Item.Properties())));
+        RECEIVER_ITEMS.add((DeferredItem<TunableBlockItem>)ITEMS.register("receiver", () -> new TunableBlockItem((Block)RECEIVERS.get(0).get(), new Item.Properties())));
+        ANTENNA_ITEM = ITEMS.register("antenna", () -> new MastItem((MastBlock)((Object)((Object)ANTENNA.get())), new Item.Properties()));
         YAGI_ANTENNA_ITEM = ModRegistry.blockItem(YAGI_ANTENNA);
         SILVER_ORE_ITEM = ModRegistry.blockItem(SILVER_ORE);
         DEEPSLATE_SILVER_ORE_ITEM = ModRegistry.blockItem(DEEPSLATE_SILVER_ORE);
         SILVER_BLOCK_ITEM = ModRegistry.blockItem(SILVER_BLOCK);
         RADIO_CASING_ITEM = ModRegistry.blockItem(RADIO_CASING);
         CIRCUIT_WORKBENCH_ITEM = ModRegistry.blockItem(CIRCUIT_WORKBENCH);
-        RELAY_TOWER_SMALL_ITEM = ITEMS.register("relay_tower_small", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)((Object)RELAY_TOWER_SMALL.get()))), new Item.Properties().stacksTo(1)));
-        RELAY_TOWER_BIG_ITEM = ITEMS.register("relay_tower_big", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)((Object)RELAY_TOWER_BIG.get()))), new Item.Properties().stacksTo(1)));
-        RADIO_TOWER_ITEM = ITEMS.register("radio_tower", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)((Object)RADIO_TOWER.get()))), new Item.Properties().stacksTo(1)));
+        RELAY_TOWER_SMALL_ITEM = ITEMS.register("relay_tower_small", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)RELAY_TOWER_SMALL.get())), new Item.Properties().stacksTo(1)));
+        RELAY_TOWER_BIG_ITEM = ITEMS.register("relay_tower_big", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)RELAY_TOWER_BIG.get())), new Item.Properties().stacksTo(1)));
+        RADIO_TOWER_ITEM = ITEMS.register("radio_tower", () -> new StructureItem.Tuned((StructureBlock)((Object)((Object)RADIO_TOWER.get())), new Item.Properties().stacksTo(1)));
         MICROPHONE_ITEM = ITEMS.register("microphone", () -> new BlockItem((Block)MICROPHONE.get(), new Item.Properties()));
         SPEAKER_ITEM = ITEMS.register("speaker", () -> new BlockItem((Block)SPEAKER.get(), new Item.Properties()));
         TAPE_PLAYER_ITEM = ITEMS.register("tape_player", () -> new BlockItem((Block)TAPE_PLAYER.get(), new Item.Properties()));
@@ -445,7 +407,8 @@ public final class ModRegistry {
         TOWER_BE = BES.register("radio_tower", () -> BlockEntityType.Builder.of(TowerCoreBE::new, (Block[])new Block[]{(Block)RADIO_TOWER.get()}).build(null));
         MIC_BE = BES.register("microphone", () -> BlockEntityType.Builder.of(MicrophoneBE::new, (Block[])new Block[]{(Block)MICROPHONE.get()}).build(null));
         TAPE_PLAYER_BE = BES.register("tape_player", () -> BlockEntityType.Builder.of(TapePlayerBE::new, (Block[])new Block[]{(Block)TAPE_PLAYER.get()}).build(null));
-        SPEAKER_BE = BES.register("speaker", () -> BlockEntityType.Builder.of(SpeakerBE::new, (Block[])new Block[]{(Block)SPEAKER.get(), (Block)HORN_SPEAKER.get()}).build(null));
+        SPEAKER_BE = BES.register("speaker", () -> BlockEntityType.Builder.of(SpeakerBE::new, (Block[])new Block[]{(Block)SPEAKER.get()}).build(null));
+        YAGI_BE = BES.register("yagi_antenna", () -> BlockEntityType.Builder.of((p, st) -> new YagiAntennaBE(YAGI_BE.get(), p, st), (Block[])new Block[]{(Block)YAGI_ANTENNA.get()}).build(null));
         INSULATOR_BE = BES.register("insulator", () -> BlockEntityType.Builder.of(InsulatorBE::new, (Block[])new Block[]{(Block)INSULATOR.get()}).build(null));
         JAMMER_BE = BES.register("jammer", () -> BlockEntityType.Builder.of(ElectricCompat.jammerBE(), (Block[])new Block[]{(Block)JAMMER.get()}).build(null));
         WORKBENCH_BE = BES.register("circuit_workbench", () -> BlockEntityType.Builder.of(CircuitWorkbenchBE::new, (Block[])new Block[]{(Block)CIRCUIT_WORKBENCH.get()}).build(null));
@@ -463,14 +426,9 @@ public final class ModRegistry {
             out.accept((ItemLike)TAPE_PLAYER_ITEM.get());
             out.accept((ItemLike)TAPE_ITEM.get());
             out.accept((ItemLike)SPEAKER_ITEM.get());
-            out.accept((ItemLike)HORN_SPEAKER_ITEM.get());
-            out.accept((ItemLike)ON_AIR_SIGN_ITEM.get());
             TRANSMITTER_ITEMS.forEach(i -> out.accept((ItemLike)i.get()));
             RECEIVER_ITEMS.forEach(i -> out.accept((ItemLike)i.get()));
             out.accept((ItemLike)ANTENNA_ITEM.get());
-            out.accept((ItemLike)ANTENNA_MEDIUM_ITEM.get());
-            out.accept((ItemLike)ANTENNA_BIG_ITEM.get());
-            out.accept((ItemLike)ANTENNA_GIANT_ITEM.get());
             out.accept((ItemLike)YAGI_ANTENNA_ITEM.get());
             out.accept((ItemLike)RELAY_TOWER_SMALL_ITEM.get());
             out.accept((ItemLike)RELAY_TOWER_BIG_ITEM.get());
@@ -480,11 +438,7 @@ public final class ModRegistry {
             out.accept((ItemLike)CIRCUIT_BOX_ITEM.get());
             out.accept((ItemLike)RADIO_CONSOLE_ITEM.get());
             out.accept((ItemLike)COPPER_WIRE.get());
-            out.accept((ItemLike)GOLD_WIRE.get());
-            out.accept((ItemLike)SILVER_WIRE.get());
-            out.accept((ItemLike)FIBER_CABLE.get());
             out.accept((ItemLike)INSULATOR_ITEM.get());
-            out.accept((ItemLike)MULTIMETER.get());
             out.accept((ItemLike)FREQUENCY_CARD.get());
             out.accept((ItemLike)RADIO_CASING_ITEM.get());
             out.accept((ItemLike)CIRCUIT_WORKBENCH_ITEM.get());
@@ -499,15 +453,12 @@ public final class ModRegistry {
             out.accept((ItemLike)LIGHT_SENSOR.get());
             out.accept((ItemLike)RAIN_SENSOR.get());
             out.accept((ItemLike)MOTION_SENSOR.get());
-            out.accept((ItemLike)VACUUM_TUBE.get());
             out.accept((ItemLike)COPPER_COIL.get());
             out.accept((ItemLike)CRYSTAL_OSCILLATOR.get());
-            out.accept((ItemLike)POLISHED_AMETHYST.get());
             BOARDS.values().forEach(b -> out.accept((ItemLike)b.get()));
             out.accept((ItemLike)SIGNAL_MECHANISM.get());
             out.accept((ItemLike)SPEAKER_CONE.get());
             out.accept((ItemLike)MIC_CAPSULE.get());
-            out.accept((ItemLike)METAL_CASING.get());
             out.accept((ItemLike)SILVER_ORE_ITEM.get());
             out.accept((ItemLike)DEEPSLATE_SILVER_ORE_ITEM.get());
             out.accept((ItemLike)RAW_SILVER.get());

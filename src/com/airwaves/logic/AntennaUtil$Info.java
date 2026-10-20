@@ -1,14 +1,9 @@
 /*
  * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  net.minecraft.core.Direction
  */
 package com.airwaves.logic;
 
-import net.minecraft.core.Direction;
-
-public record AntennaUtil.Info(int height, int tier, double fixedRange, Direction beam) {
+public record AntennaUtil.Info(int height, int tier, double fixedRange, Float beam) {
     public static final AntennaUtil.Info NONE = new AntennaUtil.Info(0, 0);
 
     public AntennaUtil.Info(int height, int tier) {

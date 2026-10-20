@@ -52,13 +52,10 @@ public final class CEEWires {
     }
 
     private static WireType wireFor(CableType t) {
-        return t == CableType.COPPER ? (WireType)CEEWireTypes.COPPER.get() : (WireType)CEEWireTypes.ELECTRUM.get();
+        return (WireType)CEEWireTypes.COPPER.get();
     }
 
     public static InteractionResult use(UseOnContext ctx, CableType type) {
-        if (type == CableType.FIBER) {
-            return InteractionResult.PASS;
-        }
         Level level = ctx.getLevel();
         BlockPos pos = ctx.getClickedPos();
         Player player = ctx.getPlayer();

@@ -126,7 +126,7 @@ CableNode {
 
     @Override
     public void setRemoved() {
-        ClientSinks.SINKS.remove(this);
+        ClientSinks.removed(this, this);
         super.setRemoved();
     }
 
@@ -149,10 +149,10 @@ CableNode {
         boolean oldOk = this.ok;
         boolean oldGnd = this.grounded;
         int t = this.tier();
-        if (onCopper.tier() == t && onCopper.height() >= onTop.height()) {
+        if (onCopper.height() > 0 && onCopper.height() >= onTop.height()) {
             this.info = onCopper;
             this.grounded = true;
-        } else if (onTop.tier() == t) {
+        } else if (onTop.height() > 0) {
             this.info = onTop;
             this.grounded = false;
         } else {
@@ -178,7 +178,7 @@ CableNode {
     }
 
     @Override
-    public Direction rxBeam() {
+    public Float rxBeam() {
         return this.info.beam();
     }
 
@@ -195,7 +195,7 @@ CableNode {
         if (cr == 0) {
             tip.add((Component)Component.literal((String)"    no amethyst in the chamber").withStyle(ChatFormatting.GOLD));
         } else if (!this.ok) {
-            tip.add((Component)Component.literal((String)("    needs a " + AntennaUtil.tierName(this.tier()).toLowerCase() + " antenna")).withStyle(ChatFormatting.GOLD));
+            tip.add((Component)Component.literal((String)"    needs an antenna").withStyle(ChatFormatting.GOLD));
         } else {
             tip.add((Component)Component.literal((String)("    antenna " + this.antennaHeight + " tall" + (this.grounded ? ", grounded" : "") + (this.links.isEmpty() ? ", built-in speaker" : ""))).withStyle(ChatFormatting.GRAY));
         }

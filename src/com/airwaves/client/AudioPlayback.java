@@ -3,6 +3,7 @@
  * 
  * Could not load the following classes:
  *  net.minecraft.client.Minecraft
+ *  net.minecraft.core.BlockPos
  *  net.minecraft.core.Vec3i
  *  net.minecraft.world.entity.player.Player
  *  net.minecraft.world.phys.Vec3
@@ -24,6 +25,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.SourceDataLine;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -166,6 +168,11 @@ public final class AudioPlayback {
         thunderLevel = mc.level.getThunderLevel(1.0f);
         long now = System.currentTimeMillis();
         SOURCES.entrySet().removeIf(e -> now - ((Source)e.getValue()).last > 4000L);
+    }
+
+    public static void stopSink(BlockPos pos) {
+        String prefix = "r:" + pos.asLong() + ":";
+        SOURCES.keySet().removeIf(k -> k.startsWith(prefix));
     }
 
     public static void stopAll() {

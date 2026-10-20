@@ -5,14 +5,10 @@
  *  net.minecraft.core.BlockPos
  *  net.minecraft.core.HolderLookup$Provider
  *  net.minecraft.core.NonNullList
- *  net.minecraft.core.Vec3i
  *  net.minecraft.core.component.DataComponentType
  *  net.minecraft.nbt.CompoundTag
- *  net.minecraft.network.protocol.Packet
- *  net.minecraft.network.protocol.game.ClientboundStopSoundPacket
  *  net.minecraft.resources.ResourceLocation
  *  net.minecraft.server.level.ServerLevel
- *  net.minecraft.server.level.ServerPlayer
  *  net.minecraft.sounds.SoundEvent
  *  net.minecraft.sounds.SoundSource
  *  net.minecraft.world.ContainerHelper
@@ -34,21 +30,17 @@ import com.airwaves.logic.SoundCapture;
 import com.airwaves.logic.TapeAudio;
 import com.airwaves.logic.TapeData;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.Vec3i;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.ContainerHelper;
@@ -85,7 +77,8 @@ extends MicrophoneBE {
     private List<TapeAudio.Frame> playing = List.of();
     private long recStart;
     private int voiceIdx;
-    private final Set<ResourceLocation> music = new LinkedHashSet<ResourceLocation>();
+    private final Map<ResourceLocation, Track> music = new LinkedHashMap<ResourceLocation, Track>();
+    private boolean resume;
     public final ContainerData data = new ContainerData(){
 
         public int get(int i) {
@@ -177,13 +170,33 @@ extends MicrophoneBE {
             this.pos = 0;
         }
         this.mode = 1;
+        this.seek();
+        this.setChanged();
+    }
+
+    private void seek() {
+        this.resume = false;
         this.cueIdx = this.firstCueAt(this.pos);
-        this.playing = this.level.getServer() != null ? TapeAudio.load(this.level.getServer(), this.tape().audio()) : List.of();
+        this.playing = this.level != null && this.level.getServer() != null ? TapeAudio.load(this.level.getServer(), this.tape().audio()) : List.of();
         this.voiceIdx = 0;
         while (this.voiceIdx < this.playing.size() && this.playing.get(this.voiceIdx).ms() < this.pos * 50) {
             ++this.voiceIdx;
         }
-        this.setChanged();
+        this.music.clear();
+        for (TapeData.Cue c : this.tape().cues()) {
+            if (c.tick() >= this.pos) break;
+            if (c.kind() == 1) {
+                this.music.put(c.sound(), new Track(c.tick(), c.volume(), c.pitch()));
+                continue;
+            }
+            if (c.kind() != 2) continue;
+            this.music.remove(c.sound());
+        }
+        Level level = this.level;
+        if (level instanceof ServerLevel) {
+            ServerLevel sl = (ServerLevel)level;
+            this.heartbeat(sl);
+        }
     }
 
     public void stop() {
@@ -294,6 +307,12 @@ extends MicrophoneBE {
             this.stop();
             return;
         }
+        if (this.resume) {
+            this.seek();
+        }
+        if (this.pos % 20 == 0) {
+            this.heartbeat(sl);
+        }
         List<TapeData.Cue> cues = t.cues();
         while (this.cueIdx < cues.size() && cues.get(this.cueIdx).tick() <= this.pos) {
             this.emit(sl, cues.get(this.cueIdx++));
@@ -332,19 +351,20 @@ extends MicrophoneBE {
      * WARNING - Removed try catching itself - possible behaviour change.
      */
     private void emit(ServerLevel sl, TapeData.Cue c) {
-        float vol;
         boolean on = this.wired();
         if (c.kind() == 2) {
             this.stopOne(sl, c.sound(), on);
             return;
         }
-        float f = vol = c.kind() == 1 ? 2.5f : c.volume();
         if (c.kind() == 1) {
-            this.music.add(c.sound());
+            Track tr = new Track(c.tick(), c.volume(), c.pitch());
+            this.music.put(c.sound(), tr);
+            this.beat(sl, c.sound(), tr, on);
+            return;
         }
         SoundCapture.suppress = on;
         try {
-            sl.playSound(null, (double)this.worldPosition.getX() + 0.5, (double)this.worldPosition.getY() + 0.5, (double)this.worldPosition.getZ() + 0.5, SoundEvent.createVariableRangeEvent((ResourceLocation)c.sound()), SoundSource.RECORDS, vol, c.pitch());
+            sl.playSound(null, (double)this.worldPosition.getX() + 0.5, (double)this.worldPosition.getY() + 0.5, (double)this.worldPosition.getZ() + 0.5, SoundEvent.createVariableRangeEvent((ResourceLocation)c.sound()), SoundSource.RECORDS, c.volume(), c.pitch());
         }
         finally {
             SoundCapture.suppress = false;
@@ -352,6 +372,23 @@ extends MicrophoneBE {
         if (on) {
             this.feeds.onAir(sl);
             RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), c.sound(), c.volume() * this.line, c.pitch(), c.kind(), this.worldPosition.asLong());
+        }
+    }
+
+    private void heartbeat(ServerLevel sl) {
+        boolean on = this.wired();
+        for (Map.Entry<ResourceLocation, Track> e : this.music.entrySet()) {
+            this.beat(sl, e.getKey(), e.getValue(), on);
+        }
+    }
+
+    private void beat(ServerLevel sl, ResourceLocation id, Track tr, boolean on) {
+        int off = Math.max(0, this.pos - tr.start()) * 50;
+        long key = this.worldPosition.asLong();
+        RadioNetwork.sendSound(sl, this.worldPosition, id, 2.5f * tr.volume(), tr.pitch(), 1.0f, true, (byte)1, key, off);
+        if (on) {
+            this.feeds.onAir(sl);
+            RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), id, tr.volume() * this.line, tr.pitch(), (byte)1, key, off);
         }
     }
 
@@ -368,13 +405,10 @@ extends MicrophoneBE {
 
     private void stopOne(ServerLevel sl, ResourceLocation id, boolean on) {
         this.music.remove(id);
-        ClientboundStopSoundPacket stopPkt = new ClientboundStopSoundPacket(id, SoundSource.RECORDS);
-        for (ServerPlayer p : sl.players()) {
-            if (!(p.blockPosition().distSqr((Vec3i)this.worldPosition) < 9216.0)) continue;
-            p.connection.send((Packet)stopPkt);
-        }
+        long key = this.worldPosition.asLong();
+        RadioNetwork.sendSound(sl, this.worldPosition, id, 1.0f, 1.0f, 1.0f, true, (byte)2, key, 0);
         if (on) {
-            RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), id, 1.0f, 1.0f, (byte)2, this.worldPosition.asLong());
+            RadioNetwork.broadcastSound(sl, this.feeds.getBlockPos().asLong(), id, 1.0f, 1.0f, (byte)2, key);
         }
     }
 
@@ -391,7 +425,7 @@ extends MicrophoneBE {
             return;
         }
         boolean on = this.wired();
-        for (ResourceLocation id : new ArrayList<ResourceLocation>(this.music)) {
+        for (ResourceLocation id : new ArrayList<ResourceLocation>(this.music.keySet())) {
             this.stopOne(sl, id, on);
         }
     }
@@ -408,6 +442,8 @@ extends MicrophoneBE {
         ContainerHelper.saveAllItems((CompoundTag)tag, (NonNullList)this.inv.getItems(), (HolderLookup.Provider)r);
         tag.putBoolean("loop", this.loop);
         tag.putBoolean("signal", this.lastSignal);
+        tag.putInt("mode", this.mode == 1 ? 1 : 0);
+        tag.putInt("pos", this.mode == 1 ? this.pos : 0);
     }
 
     @Override
@@ -417,5 +453,11 @@ extends MicrophoneBE {
         ContainerHelper.loadAllItems((CompoundTag)tag, (NonNullList)this.inv.getItems(), (HolderLookup.Provider)r);
         this.loop = tag.getBoolean("loop");
         this.lastSignal = tag.getBoolean("signal");
+        this.mode = tag.getInt("mode") == 1 ? 1 : 0;
+        this.pos = tag.getInt("pos");
+        this.resume = this.mode == 1;
+    }
+
+    private record Track(int start, float volume, float pitch) {
     }
 }

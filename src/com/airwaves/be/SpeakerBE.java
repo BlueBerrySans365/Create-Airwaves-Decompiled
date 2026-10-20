@@ -63,7 +63,7 @@ implements AudioSink {
 
     public void setRemoved() {
         super.setRemoved();
-        ClientSinks.SINKS.remove(this);
+        ClientSinks.removed(this, this);
         if (this.level != null && !this.level.isClientSide) {
             RadioNetwork.unregister(this);
         }

@@ -35,6 +35,6 @@ extends AntennaBlock {
 
     @Override
     public int[][] profile() {
-        return new int[][]{{1, 20}};
+        return new int[][]{{1, 96}};
     }
 }

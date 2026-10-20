@@ -97,7 +97,9 @@ public final class SoundCapture {
                     JukeboxBlockEntity jb;
                     BlockEntity blockEntity;
                     if (!sl.isLoaded(p) || !((blockEntity = sl.getBlockEntity(p)) instanceof JukeboxBlockEntity) || !(jb = (JukeboxBlockEntity)blockEntity).getSongPlayer().isPlaying() || (song = jb.getSongPlayer().getSong()) == null) continue;
-                    now.put(p.asLong(), new Heard(((SoundEvent)song.soundEvent().value()).getLocation(), root));
+                    ResourceLocation sid = ((SoundEvent)song.soundEvent().value()).getLocation();
+                    Heard was = (Heard)dim.getOrDefault(mk, Map.of()).get(p.asLong());
+                    now.put(p.asLong(), new Heard(sid, root, was != null && was.sound().equals((Object)sid) && was.root() == root ? was.since() : sl.getGameTime()));
                 }
             }
             Map before = dim.computeIfAbsent(mk, k -> new HashMap());
@@ -107,9 +109,16 @@ public final class SoundCapture {
                 SoundCapture.send(sl, m, tape, (Heard)e.getValue(), (Long)e.getKey(), (byte)2);
             }
             for (Map.Entry e : now.entrySet()) {
+                boolean fresh;
                 Heard b = (Heard)before.get(e.getKey());
-                if (b != null && b.sound().equals((Object)((Heard)e.getValue()).sound())) continue;
-                SoundCapture.send(sl, m, tape, (Heard)e.getValue(), (Long)e.getKey(), (byte)1);
+                boolean bl = fresh = b == null || !b.sound().equals((Object)((Heard)e.getValue()).sound());
+                if (tape != null) {
+                    if (!fresh) continue;
+                    tape.capture(((Heard)e.getValue()).sound(), 1.0f, 1.0f, (byte)1);
+                    continue;
+                }
+                if (((Heard)e.getValue()).root() == 0L) continue;
+                RadioNetwork.broadcastSound(sl, ((Heard)e.getValue()).root(), ((Heard)e.getValue()).sound(), 1.0f, 1.0f, (byte)1, (Long)e.getKey(), (int)Math.min(Integer.MAX_VALUE, (sl.getGameTime() - ((Heard)e.getValue()).since()) * 50L));
             }
             before.clear();
             before.putAll(now);
@@ -144,6 +153,6 @@ public final class SoundCapture {
         HEARD = new HashMap<ResourceKey<Level>, Map<Long, Map<Long, Heard>>>();
     }
 
-    private record Heard(ResourceLocation sound, long root) {
+    private record Heard(ResourceLocation sound, long root, long since) {
     }
 }

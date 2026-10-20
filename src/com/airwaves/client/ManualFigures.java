@@ -4,7 +4,6 @@
  * Could not load the following classes:
  *  net.minecraft.client.gui.Font
  *  net.minecraft.client.gui.GuiGraphics
- *  net.minecraft.core.Direction
  */
 package com.airwaves.client;
 
@@ -12,7 +11,6 @@ import com.airwaves.cable.CableType;
 import com.airwaves.logic.AntennaUtil;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.Direction;
 
 final class ManualFigures {
     static final int INK = -12899814;
@@ -154,9 +152,10 @@ final class ManualFigures {
     }
 
     private static void range(GuiGraphics g, Font f, int x, int y, int w, int h, float t) {
-        ManualFigures.small(g, f, "Reach with a 10 tall mast (FM, blocks)", x + 3, y + 3, -8765676, w - 6);
-        String[] n = new String[]{"Small", "Medium", "Large", "Giant"};
-        double max = AntennaUtil.range(10, 4, true);
+        ManualFigures.small(g, f, "Reach by mast height (FM, blocks)", x + 3, y + 3, -8765676, w - 6);
+        String[] n = new String[]{"10", "20", "40", "96"};
+        int[] hs = new int[]{10, 20, 40, 96};
+        double max = AntennaUtil.range(96, 4, true);
         float grow = ManualFigures.ease(t % 6.0f / 1.6f);
         int rows = 4;
         int top = y + 10;
@@ -164,7 +163,7 @@ final class ManualFigures {
         int bx = x + 26;
         int bw = w - 26 - 26;
         for (int i = 0; i < rows; ++i) {
-            double r = AntennaUtil.range(10, i + 1, true);
+            double r = AntennaUtil.range(hs[i], 4, true);
             int ry = top + i * rh;
             int len = (int)((double)bw * r / max * (double)grow);
             ManualFigures.small(g, f, n[i], x + 3, (float)ry + (float)rh / 2.0f - 2.0f, -12899814, 22);
@@ -274,7 +273,7 @@ final class ManualFigures {
                 double q = Math.max(lo, 1.0 - c.loss * (maxLen * (double)i / (double)aw));
                 ys[i] = ay + (int)((double)ah * (1.0 - q) / (1.0 - lo));
             }
-            int col = c == CableType.SILVER ? -6642508 : c.color;
+            int col = c.color;
             ManualFigures.plot(g, ax, ys, col);
             ManualFigures.dot(g, ax + ys.length - 1, ys[ys.length - 1], 3, col);
             float u = (t * 0.4f + (float)c.ordinal() * 0.17f) % 1.0f;
@@ -409,7 +408,7 @@ final class ManualFigures {
             double a = Math.toRadians(i);
             double dx = Math.cos(a);
             double dz = Math.sin(a);
-            float r = (float)(AntennaUtil.pattern(Direction.EAST, dx, dz) * (double)unit);
+            float r = (float)(AntennaUtil.pattern(Float.valueOf(90.0f), dx, dz) * (double)unit);
             ManualFigures.dot(g, (float)cx + (float)dx * r, (float)cy + (float)dz * r, 1, -13734232);
         }
         g.fill(cx - 3, cy - 1, cx + 4, cy, -12899814);
@@ -420,7 +419,7 @@ final class ManualFigures {
         float rr = unit * 1.2f;
         float px = (float)cx + (float)Math.cos(a) * rr;
         float py = (float)cy + (float)Math.sin(a) * rr;
-        boolean heard = AntennaUtil.pattern(Direction.EAST, Math.cos(a), Math.sin(a)) * (double)unit >= (double)rr;
+        boolean heard = AntennaUtil.pattern(Float.valueOf(90.0f), Math.cos(a), Math.sin(a)) * (double)unit >= (double)rr;
         g.fill((int)px - 1, (int)py - 1, (int)px + 2, (int)py + 2, heard ? -12678598 : -5228500);
         int lx = x + w * 2 / 3 + 2;
         ManualFigures.small(g, f, "ahead x1.9", lx, y + 4, -13734232, w / 3 - 4);

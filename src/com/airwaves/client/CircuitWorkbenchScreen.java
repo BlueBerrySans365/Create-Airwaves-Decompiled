@@ -347,7 +347,7 @@ extends AbstractContainerScreen<CircuitWorkbenchMenu> {
                     int a = 96 + (int)(64.0 * Math.sin((double)((float)this.ticks + pt) * 0.3 + (double)i));
                     g.fill(sx - 1, sy - 1, sx + 19, sy + 19, a << 24 | 0xFF4030);
                 }
-                if (works && c[i].is((Item)ModRegistry.VACUUM_TUBE.get())) {
+                if (works && c[i].is(ModRegistry.electronTube())) {
                     g.fill(sx, sy, sx + 18, sy + 18, 1090494528);
                 }
                 if (ghost == null || ghost[i] < 0 || !c[i].isEmpty() || tr[i]) continue;

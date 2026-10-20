@@ -5,7 +5,6 @@
  *  net.minecraft.ChatFormatting
  *  net.minecraft.core.BlockPos
  *  net.minecraft.core.BlockPos$MutableBlockPos
- *  net.minecraft.core.Direction
  *  net.minecraft.core.Vec3i
  *  net.minecraft.core.component.DataComponentType
  *  net.minecraft.network.chat.Component
@@ -55,6 +54,7 @@ import com.airwaves.item.PortableRadioItem;
 import com.airwaves.logic.AntennaUtil;
 import com.airwaves.logic.Cables;
 import com.airwaves.logic.Emitter;
+import com.airwaves.logic.MobileRadios;
 import com.airwaves.logic.SoundCapture;
 import com.airwaves.logic.WeatherUtil;
 import com.airwaves.net.CablePulsePayload;
@@ -78,7 +78,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
@@ -146,6 +145,7 @@ public final class RadioNetwork {
         LEVELS.clear();
         HANDHELD.clear();
         TALKING.clear();
+        MobileRadios.clear();
     }
 
     public static void register(BlockEntity be) {
@@ -260,7 +260,7 @@ public final class RadioNetwork {
         return RadioNetwork.best(lv, pos, rxTop, t, gain, em, jam, null);
     }
 
-    public static Best best(Level lv, BlockPos pos, double rxTop, Tuning t, double gain, List<Emitter> em, List<BlockPos> jam, Direction rxBeam) {
+    public static Best best(Level lv, BlockPos pos, double rxTop, Tuning t, double gain, List<Emitter> em, List<BlockPos> jam, Float rxBeam) {
         float best = 0.0f;
         long root = 0L;
         double night = t.fm() ? 1.0 : WeatherUtil.amNightBoost(lv);
@@ -401,6 +401,7 @@ public final class RadioNetwork {
         for (RadioStation radioStation : ((CollectStationsEvent)NeoForge.EVENT_BUS.post((Event)new CollectStationsEvent(level))).stations()) {
             arrayList.add(radioStation.toEmitter());
         }
+        MobileRadios.addEmitters(level, arrayList);
         ArrayList<BlockPos> arrayList2 = new ArrayList<BlockPos>();
         for (JammerBE jammerBE : l.jammers) {
             if (!jammerBE.refresh()) continue;
@@ -497,6 +498,7 @@ public final class RadioNetwork {
         for (ServerPlayer p : level.players()) {
             RadioNetwork.updateHandheld(p, level, arrayList, arrayList2, false);
         }
+        MobileRadios.tune(level, arrayList, arrayList2);
         NeoForge.EVENT_BUS.post((Event)new RadioNetworkTickEvent(level, l.emitters));
     }
 
@@ -595,6 +597,10 @@ public final class RadioNetwork {
             }
         }
         if (src == null) {
+            long mr = MobileRadios.voice(sl, at);
+            if (mr != 0L) {
+                RadioNetwork.broadcast(sl, mr, talker, data, 0.9f);
+            }
             return;
         }
         src.onAir(sl);
@@ -624,12 +630,28 @@ public final class RadioNetwork {
             if (!h.carrier() || e.getKey().equals(talker) || h.root() != root && (!l.linkActive || h.root() != RadioNetwork.crossRoot(root, (ResourceKey<Level>)sl.dimension())) || (lp = sl.getServer().getPlayerList().getPlayer(e.getKey())) == null) continue;
             PacketDistributor.sendToPlayer((ServerPlayer)lp, (CustomPacketPayload)new HandheldAudioPayload(talker, data, h.q(), h.fm(), gain), (CustomPacketPayload[])new CustomPacketPayload[0]);
         }
+        MobileRadios.deliverVoice(sl, root, talker, data, gain);
         return true;
     }
 
     public static void onWorldSound(ServerLevel sl, Vec3 at, ResourceLocation id, float vol, float pitch) {
         Lvl l = LEVELS.get(sl.dimension());
-        if (l == null || l.mics.isEmpty()) {
+        if (l == null) {
+            return;
+        }
+        long moving = MobileRadios.voice(sl, at);
+        if (moving != 0L) {
+            long t0;
+            long[] rate = SOUND_RATE.computeIfAbsent(moving, k -> new long[2]);
+            if (rate[0] != (t0 = sl.getGameTime()) / 20L) {
+                rate[0] = t0 / 20L;
+                rate[1] = 0L;
+            }
+            if ((rate[1] = rate[1] + 1L) <= 24L) {
+                RadioNetwork.broadcastSound(sl, moving, id, vol * 0.8f, pitch, (byte)0, 0L);
+            }
+        }
+        if (l.mics.isEmpty()) {
             return;
         }
         HashMap<TransmitterBE, Double> best = new HashMap<TransmitterBE, Double>();
@@ -661,50 +683,56 @@ public final class RadioNetwork {
     }
 
     public static void broadcastSound(ServerLevel sl, long root, ResourceLocation id, float vol, float pitch, byte kind, long key) {
+        RadioNetwork.broadcastSound(sl, root, id, vol, pitch, kind, key, 0);
+    }
+
+    public static void broadcastSound(ServerLevel sl, long root, ResourceLocation id, float vol, float pitch, byte kind, long key, int offsetMs) {
         Lvl l = LEVELS.get(sl.dimension());
         if (l == null) {
             return;
         }
-        RadioNetwork.deliverSound(sl, l, root, id, vol, pitch, kind, key);
+        RadioNetwork.deliverSound(sl, l, root, id, vol, pitch, kind, key, offsetMs);
         if (l.linkActive) {
             long cross = RadioNetwork.crossRoot(root, (ResourceKey<Level>)sl.dimension());
             for (Map.Entry<ResourceKey<Level>, Lvl> o : LEVELS.entrySet()) {
                 ServerLevel ol;
                 if (o.getKey() == sl.dimension() || !o.getValue().linkActive || (ol = sl.getServer().getLevel(o.getKey())) == null) continue;
-                RadioNetwork.deliverSound(ol, o.getValue(), cross, id, vol, pitch, kind, key);
+                RadioNetwork.deliverSound(ol, o.getValue(), cross, id, vol, pitch, kind, key, offsetMs);
             }
         }
         for (Map.Entry<UUID, HH> e : HANDHELD.entrySet()) {
             ServerPlayer lp;
             HH h = e.getValue();
             if (!h.carrier() || h.root() != root && (!l.linkActive || h.root() != RadioNetwork.crossRoot(root, (ResourceKey<Level>)sl.dimension())) || (lp = sl.getServer().getPlayerList().getPlayer(e.getKey())) == null) continue;
-            PacketDistributor.sendToPlayer((ServerPlayer)lp, (CustomPacketPayload)new RadioSoundPayload(BlockPos.ZERO, true, id, vol * 0.8f, pitch, h.q(), h.fm(), kind, key), (CustomPacketPayload[])new CustomPacketPayload[0]);
+            PacketDistributor.sendToPlayer((ServerPlayer)lp, (CustomPacketPayload)new RadioSoundPayload(BlockPos.ZERO, true, id, vol * 0.8f, pitch, h.q(), h.fm(), kind, key, offsetMs), (CustomPacketPayload[])new CustomPacketPayload[0]);
         }
+        MobileRadios.deliverSound(sl, root, id, vol, pitch, kind, key, offsetMs);
     }
 
-    private static void deliverSound(ServerLevel sl, Lvl l, long root, ResourceLocation id, float vol, float pitch, byte kind, long key) {
+    private static void deliverSound(ServerLevel sl, Lvl l, long root, ResourceLocation id, float vol, float pitch, byte kind, long key, int off) {
         for (TunableBE s : l.sinks) {
             ReceiverBE rx;
             RadioBE r;
-            if (!s.carrier || s.bestRoot != root) continue;
+            if (!s.carrier || s.bestRoot != root || s.isRemoved()) continue;
             if (s instanceof RadioBE && (r = (RadioBE)s).sinkOn()) {
-                RadioNetwork.sendSound(sl, r.getBlockPos(), id, vol, pitch, r.quality, r.tuning.fm(), kind, key);
+                RadioNetwork.sendSound(sl, r.getBlockPos(), id, vol, pitch, r.quality, r.tuning.fm(), kind, key, off);
                 continue;
             }
             if (!(s instanceof ReceiverBE) || !(rx = (ReceiverBE)s).sinkOn()) continue;
             if (rx.speakers.isEmpty()) {
-                RadioNetwork.sendSound(sl, rx.getBlockPos(), id, vol * 0.6f, pitch, rx.quality * 0.92f, rx.tuning.fm(), kind, key);
+                RadioNetwork.sendSound(sl, rx.getBlockPos(), id, vol * 0.6f, pitch, rx.quality * 0.92f, rx.tuning.fm(), kind, key, off);
                 continue;
             }
             for (SpeakerBE sp : rx.speakers) {
-                RadioNetwork.sendSound(sl, sp.getBlockPos(), id, vol, pitch, rx.quality * rx.lineQ.getOrDefault(sp, Float.valueOf(1.0f)).floatValue(), rx.tuning.fm(), kind, key);
+                if (sp.isRemoved()) continue;
+                RadioNetwork.sendSound(sl, sp.getBlockPos(), id, vol, pitch, rx.quality * rx.lineQ.getOrDefault(sp, Float.valueOf(1.0f)).floatValue(), rx.tuning.fm(), kind, key, off);
             }
         }
     }
 
-    public static void sendSound(ServerLevel lv, BlockPos pos, ResourceLocation id, float vol, float pitch, float q, boolean fm, byte kind, long key) {
+    public static void sendSound(ServerLevel lv, BlockPos pos, ResourceLocation id, float vol, float pitch, float q, boolean fm, byte kind, long key, int off) {
         Vec3 g = SableCompat.global((Level)lv, pos);
-        PacketDistributor.sendToPlayersNear((ServerLevel)lv, null, (double)g.x, (double)g.y, (double)g.z, (double)(kind == 0 ? 32.0 : 72.0), (CustomPacketPayload)new RadioSoundPayload(pos, false, id, vol, pitch, q, fm, kind, key), (CustomPacketPayload[])new CustomPacketPayload[0]);
+        PacketDistributor.sendToPlayersNear((ServerLevel)lv, null, (double)g.x, (double)g.y, (double)g.z, (double)(kind == 0 ? 32.0 : 80.0), (CustomPacketPayload)new RadioSoundPayload(pos, false, id, vol, pitch, q, fm, kind, key, off), (CustomPacketPayload[])new CustomPacketPayload[0]);
     }
 
     public static List<Emitter> emitters(Level lv) {

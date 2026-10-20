@@ -53,7 +53,7 @@ extends DeviceBlock {
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
     public RadioBlock(BlockBehaviour.Properties p) {
-        super(p, 2.0, 0.0, 3.0, 15.0, 15.0, 12.0);
+        super(p, 0.0, 0.0, 3.0, 16.0, 12.0, 10.0);
         this.registerDefaultState((BlockState)this.defaultBlockState().setValue((Property)POWERED, (Comparable)Boolean.valueOf(true)));
     }
 

@@ -43,7 +43,7 @@ extends NodeBE {
 
     @Override
     public Vec3 anchor(int slot) {
-        return CableNode.facing(this, 8.0, 0.5, 15.0);
+        return CableNode.facing(this, 8.0, 0.5, 11.0);
     }
 
     public void onLoad() {

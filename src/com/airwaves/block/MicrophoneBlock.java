@@ -23,7 +23,7 @@ extends DeviceBlock {
     public static final MapCodec<MicrophoneBlock> CODEC = MicrophoneBlock.simpleCodec(MicrophoneBlock::new);
 
     public MicrophoneBlock(BlockBehaviour.Properties p) {
-        super(p, 4.0, 0.0, 4.0, 12.0, 16.0, 13.0);
+        super(p, 4.0, 0.0, 3.0, 12.0, 12.0, 13.0);
     }
 
     protected MapCodec<MicrophoneBlock> codec() {

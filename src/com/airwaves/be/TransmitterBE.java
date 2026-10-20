@@ -55,7 +55,7 @@ implements CableNode {
     public boolean standby;
     public boolean wired;
     public int antennaHeight;
-    public Direction beam;
+    public Float beam;
     public double range;
     public float baseQ;
     protected int crystal;
@@ -146,12 +146,12 @@ implements CableNode {
         this.crystal = (Integer)st.getValue((Property)TransmitterBlock.CRYSTAL);
         boolean ground = this.level.isLoaded(back) && this.level.getBlockState(back).is(ModRegistry.GROUND_PLANE);
         AntennaUtil.Info a = ground ? AntennaUtil.scan(this.level, back.above(), this.tier()) : AntennaUtil.Info.NONE;
-        boolean match = a.tier() == this.tier();
+        boolean match = a.height() > 0;
         this.antennaHeight = match ? a.height() : 0;
         this.beam = match ? a.beam() : null;
         boolean held = this.level.getGameTime() - this.consoleHold < 40L;
         boolean bl = this.standby = this.level.hasNeighborSignal(this.worldPosition) || held;
-        this.problem = this.crystal == 0 ? "no amethyst in the chamber" : (!ground ? "needs a copper block behind it" : (!match ? "needs a " + AntennaUtil.tierName(this.tier()).toLowerCase() + " antenna on the copper" : (this.antennaHeight < 4 ? "antenna too short (" + this.antennaHeight + "/4)" : (this.standby ? (held ? "standby (radio console)" : "standby (redstone)") : (!this.turning() ? "needs power" : "")))));
+        this.problem = this.crystal == 0 ? "no amethyst in the chamber" : (!ground ? "needs a copper block behind it" : (!match ? "needs an antenna on the copper" : (this.antennaHeight < 4 ? "antenna too short (" + this.antennaHeight + "/4)" : (this.standby ? (held ? "standby (radio console)" : "standby (redstone)") : (!this.turning() ? "needs power" : "")))));
         this.active = this.problem.isEmpty();
         this.range = this.active ? (a.creative() ? a.fixedRange() : AntennaUtil.range(a, this.tuning.fm()) * this.powerFactor() * this.altitudeFactor()) : 0.0;
         this.baseQ = Math.min(1.0f, AntennaUtil.quality(a) * (this.crystal == 2 ? 1.1f : 1.0f) * (float)Math.sqrt(WeatherUtil.factor(this.level, this.radioPos().above(1 + this.antennaHeight), this.tuning.fm())));
@@ -188,7 +188,7 @@ implements CableNode {
             tip.add((Component)Component.literal((String)("    antenna " + this.antennaHeight + " tall, " + (this.wired ? "microphone cabled" : "built-in mic"))).withStyle(ChatFormatting.GRAY));
         }
         if (this.active && this.beam != null) {
-            tip.add((Component)Component.literal((String)("    Yagi beam to the " + this.beam.getName() + ": x1.9 ahead, nothing to the sides or behind")).withStyle(ChatFormatting.AQUA));
+            tip.add((Component)Component.literal((String)("    Yagi beam " + Math.round(this.beam.floatValue()) + "\u00b0 (" + AntennaUtil.compass(this.beam.floatValue()) + "): x1.9 ahead, nothing to the sides or behind")).withStyle(ChatFormatting.AQUA));
         }
         return true;
     }
@@ -202,7 +202,7 @@ implements CableNode {
         tag.putString("problem", this.problem);
         tag.putInt("ant", this.antennaHeight);
         tag.putBoolean("wired", this.wired);
-        tag.putInt("beam", this.beam == null ? -1 : this.beam.get2DDataValue());
+        tag.putFloat("beam", this.beam == null ? -1.0f : this.beam.floatValue());
     }
 
     @Override
@@ -215,8 +215,8 @@ implements CableNode {
             this.problem = tag.getString("problem");
             this.antennaHeight = tag.getInt("ant");
             this.wired = tag.getBoolean("wired");
-            int bm = tag.contains("beam") ? tag.getInt("beam") : -1;
-            this.beam = bm < 0 ? null : Direction.from2DDataValue((int)bm);
+            float bm = tag.contains("beam") ? tag.getFloat("beam") : -1.0f;
+            this.beam = bm < 0.0f ? null : Float.valueOf(bm);
         }
     }
 }

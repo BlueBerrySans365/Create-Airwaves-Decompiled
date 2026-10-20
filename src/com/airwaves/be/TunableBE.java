@@ -5,7 +5,6 @@
  *  com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
  *  net.minecraft.ChatFormatting
  *  net.minecraft.core.BlockPos
- *  net.minecraft.core.Direction
  *  net.minecraft.core.HolderLookup$Provider
  *  net.minecraft.core.component.DataComponentMap$Builder
  *  net.minecraft.core.component.DataComponentType
@@ -34,7 +33,6 @@ import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentType;
@@ -119,7 +117,7 @@ IHaveGoggleInformation {
         return 1.0;
     }
 
-    public Direction rxBeam() {
+    public Float rxBeam() {
         return null;
     }
 

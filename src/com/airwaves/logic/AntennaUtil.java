@@ -8,12 +8,11 @@
  *  net.minecraft.world.level.Level
  *  net.minecraft.world.level.block.Block
  *  net.minecraft.world.level.block.entity.BlockEntity
- *  net.minecraft.world.level.block.state.BlockState
- *  net.minecraft.world.level.block.state.properties.Property
  */
 package com.airwaves.logic;
 
 import com.airwaves.be.CreativeAntennaBE;
+import com.airwaves.be.YagiAntennaBE;
 import com.airwaves.block.AntennaBlock;
 import com.airwaves.block.CreativeAntennaBlock;
 import com.airwaves.block.YagiAntennaBlock;
@@ -22,15 +21,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
 
 public final class AntennaUtil {
     public static final int MIN_TX_HEIGHT = 4;
     private static final int[] CAPS = new int[]{20, 40, 64, 96};
     private static final double[] RANGE_MULT = new double[]{1.0, 1.3, 1.7, 2.3};
     private static final float[] QUALITY_BONUS = new float[]{0.0f, 0.08f, 0.15f, 0.22f};
-    public static final String[] TIER_NAMES = new String[]{"Small", "Medium", "Big", "Giant"};
+    public static final String[] TX_NAMES = new String[]{"Low-Power", "Mid-Power", "High-Power", "Max-Power"};
+    public static final String[] RX_NAMES = new String[]{"Basic", "Sensitive", "High-Gain", "Max-Gain"};
+    public static final String[] TIER_NAMES = TX_NAMES;
     public static final double FORWARD = 1.9;
     public static final double SIDE = 0.0;
     public static final double BACK = 0.0;
@@ -57,7 +56,12 @@ public final class AntennaUtil {
             }
             return new Info(n, n2, d);
         }
-        return AntennaUtil.scan(l, base);
+        Info i = AntennaUtil.scan(l, base);
+        if (i.height() <= 0) {
+            return Info.NONE;
+        }
+        int t = Math.max(1, Math.min(4, wantTier));
+        return new Info(Math.min(i.height(), AntennaUtil.cap(t)), t, -1.0, i.beam());
     }
 
     public static Info scan(Level l, BlockPos base) {
@@ -75,20 +79,11 @@ public final class AntennaUtil {
         return new Info(h, ab.tier(), -1.0, AntennaUtil.yagiAbove(l, (BlockPos)p, ab.size()));
     }
 
-    public static Direction yagiAbove(Level l, BlockPos at, int size) {
-        Direction d = AntennaUtil.yagi(l, at);
-        if (d != null) {
-            return d;
+    public static Float yagiAbove(Level l, BlockPos at, int size) {
+        if (!l.isLoaded(at) || !YagiAntennaBlock.isMount(l.getBlockState(at))) {
+            return null;
         }
-        int r = Math.max(1, size / 2);
-        for (int dx = -r; dx <= r; ++dx) {
-            for (int dz = -r; dz <= r; ++dz) {
-                d = AntennaUtil.yagi(l, at.offset(dx, 0, dz));
-                if (d == null) continue;
-                return d;
-            }
-        }
-        return null;
+        return AntennaUtil.yagi(l, at.above());
     }
 
     public static double range(int h, int tier, boolean fm) {
@@ -125,20 +120,40 @@ public final class AntennaUtil {
         return (1.0 + 0.12 * (double)Math.min(a.height(), 30)) * (1.0 + 0.2 * (double)(a.tier() - 1));
     }
 
-    public static Direction yagi(Level l, BlockPos at) {
+    public static Float yagi(Level l, BlockPos at) {
+        Float f;
         if (!l.isLoaded(at)) {
             return null;
         }
-        BlockState st = l.getBlockState(at);
-        return st.getBlock() instanceof YagiAntennaBlock ? (Direction)st.getValue((Property)YagiAntennaBlock.FACING) : null;
+        BlockEntity blockEntity = l.getBlockEntity(at);
+        if (blockEntity instanceof YagiAntennaBE) {
+            YagiAntennaBE y = (YagiAntennaBE)blockEntity;
+            f = Float.valueOf(y.bearing());
+        } else {
+            f = null;
+        }
+        return f;
     }
 
-    public static double pattern(Direction beam, double dx, double dz) {
+    public static double bx(float deg) {
+        return Math.sin(Math.toRadians(deg));
+    }
+
+    public static double bz(float deg) {
+        return -Math.cos(Math.toRadians(deg));
+    }
+
+    public static String compass(float deg) {
+        String[] n = new String[]{"north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"};
+        return n[Math.floorMod(Math.round(deg / 45.0f), 8)];
+    }
+
+    public static double pattern(Float beam, double dx, double dz) {
         double d = Math.sqrt(dx * dx + dz * dz);
         if (d < 1.0E-6) {
             return 1.0;
         }
-        double cos = (dx * (double)beam.getStepX() + dz * (double)beam.getStepZ()) / d;
+        double cos = (dx * AntennaUtil.bx(beam.floatValue()) + dz * AntennaUtil.bz(beam.floatValue())) / d;
         if (cos <= 0.5) {
             return 0.0;
         }
@@ -150,7 +165,7 @@ public final class AntennaUtil {
         return tier <= 0 ? "none" : TIER_NAMES[tier - 1];
     }
 
-    public record Info(int height, int tier, double fixedRange, Direction beam) {
+    public record Info(int height, int tier, double fixedRange, Float beam) {
         public static final Info NONE = new Info(0, 0);
 
         public Info(int height, int tier) {

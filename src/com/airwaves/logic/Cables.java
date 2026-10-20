@@ -28,7 +28,6 @@ import com.airwaves.cable.CableType;
 import com.airwaves.cable.Link;
 import com.airwaves.cable.NodeRef;
 import com.airwaves.compat.SableCompat;
-import com.airwaves.item.CableItem;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,12 +60,7 @@ public final class Cables {
     }
 
     public static Item item(CableType t) {
-        return switch (t) {
-            case CableType.GOLD -> (CableItem)((Object)ModRegistry.GOLD_WIRE.get());
-            case CableType.SILVER -> (CableItem)((Object)ModRegistry.SILVER_WIRE.get());
-            case CableType.FIBER -> (CableItem)((Object)ModRegistry.FIBER_CABLE.get());
-            default -> (CableItem)((Object)ModRegistry.COPPER_WIRE.get());
-        };
+        return (Item)ModRegistry.COPPER_WIRE.get();
     }
 
     public static boolean compatible(CableNode a, int sa, CableNode b, int sb) {

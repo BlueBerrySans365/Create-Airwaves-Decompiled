@@ -4,10 +4,7 @@
 package com.airwaves.cable;
 
 public enum CableType {
-    COPPER("copper", 16, 0.004, 0.06f, true, -3641281),
-    GOLD("gold", 24, 0.002, 0.06f, true, -999376),
-    SILVER("silver", 32, 8.0E-4, 0.06f, true, -2695704),
-    FIBER("fiber", 64, 0.0, 0.05f, true, -12594960);
+    COPPER("copper", 16, 0.004, 0.06f, true, -3641281);
 
     public final String id;
     public final int maxLen;
